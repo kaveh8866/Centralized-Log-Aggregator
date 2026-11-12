@@ -1,0 +1,5 @@
+# The collector image only needs configs/fluent-bit/. Everything else (git
+# history, docs, compose files, local env files) stays out of the build context.
+*
+!configs/
+!configs/**

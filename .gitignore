@@ -1,0 +1,63 @@
+# =============================================================================
+# Project 01 · Centralized Log Aggregator — zero-leak boundary
+# Nothing that carries a credential, a local database or generated state may
+# ever be committed. Runtime data lives in Docker named volumes, not in the tree.
+# =============================================================================
+
+# --- Terraform / OpenTofu state (Stage 2) -----------------------------------
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example
+crash.log
+override.tf
+override.tf.json
+
+# --- Runtime data (also mounted as named volumes by compose) -----------------
+loki-data/
+grafana-data/
+fluent-bit-buffer/
+logs/
+
+# --- Python build artefacts --------------------------------------------------
+__pycache__/
+.venv/
+venv/
+
+# --- OS / editor noise -------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+
+# CloudGuard Hard Security Boundary
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.db
+*.sqlite
+*.sqlite3
+*.json_sa
+application_default_credentials.json
+*service-account*.json
+.cloudguard/
+node_modules/
+dist/
+*.log
+.DS_Store
+Thumbs.db
+
+# --- Additional key material and state kept out of Git ----------------------
+keys/
+*.p12
+*.pfx
+credentials.json
+id_rsa
+id_ed25519
+*.db-wal
+*.db-shm
+vault.db
+build/

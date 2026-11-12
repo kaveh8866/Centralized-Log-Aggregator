@@ -1,0 +1,70 @@
+# =============================================================================
+# Terraform/OpenTofu variable values — COPY to terraform.tfvars
+# =============================================================================
+# Every value below is a placeholder. terraform.tfvars is gitignored, because it
+# holds account identifiers; the API signing key never belongs in this file at
+# all — point private_key_path at a key outside the repository, or leave the
+# auth variables null and let ~/.oci/config supply them.
+#
+#   cp terraform.tfvars.example terraform.tfvars   # then fill in
+#   tofu init && tofu plan
+# =============================================================================
+
+# --- OCI identity ------------------------------------------------------------
+tenancy_ocid     = "your_tenancy_ocid_here"
+compartment_ocid = "your_compartment_ocid_here"
+region           = "eu-frankfurt-1"
+
+# Preferred: authenticate through the OCI CLI config file (no key paths here).
+config_file_profile = "DEFAULT"
+
+# Alternative: explicit API-key auth. Leave the three values null to use the
+# config profile above.
+user_ocid        = null
+fingerprint      = null
+private_key_path = null
+
+# --- Naming / tagging --------------------------------------------------------
+project_name = "cloudguard-logs"
+environment  = "dev"
+
+freeform_tags = {
+  project = "centralized-log-aggregator"
+  owner   = "cloudguard"
+  tier    = "always-free"
+}
+
+# --- Network -----------------------------------------------------------------
+vcn_cidr    = "10.0.0.0/16"
+subnet_cidr = "10.0.1.0/24"
+
+# Narrow SSH to your own address before exposing this host to the internet.
+ssh_allowed_cidr     = "0.0.0.0/0"
+grafana_allowed_cidr = "0.0.0.0/0"
+# Loki's HTTP API has no authentication in this stage. The ingress rule is
+# disabled by default; if you enable it, the CIDR defaults to the private subnet
+# and the module refuses to fall back to 0.0.0.0/0.
+loki_allowed_cidr    = "10.0.1.0/24"
+enable_loki_ingress  = false
+
+grafana_port = 3000
+loki_port    = 3100
+
+# --- Compute (Always Free A1 envelope) ---------------------------------------
+instance_shape       = "VM.Standard.A1.Flex"
+instance_ocpus       = 1
+instance_memory_gbs  = 6
+boot_volume_size_gbs = 50
+hostname_label       = "log-aggregator"
+
+# Leave null to use the first availability domain in the region.
+availability_domain = null
+
+# Paste your PUBLIC key. A private key is rejected by variable validation.
+ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePlaceholderKeyExamplePlaceholder user@example"
+
+# Leave null to auto-resolve the latest Ubuntu 24.04 image matching the shape
+# (this is what keeps the ARM A1 boot image correct).
+image_id = null
+image_operating_system         = "Canonical Ubuntu"
+image_operating_system_version = "24.04"

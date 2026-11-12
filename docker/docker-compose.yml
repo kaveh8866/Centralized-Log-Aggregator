@@ -1,0 +1,121 @@
+# Project 01 · Centralized Log Aggregator
+# Portable stack: Fluent Bit (collector) -> Loki (store) -> Grafana (query UI).
+# Validated against Compose Spec (no obsolete `version:` key).
+#
+# Run from the repository root:
+#   docker compose --env-file .env -f docker/docker-compose.yml up -d
+#
+# Relative paths below resolve against this file's directory (docker/).
+
+name: cloudguard-log-aggregator
+
+x-log-rotation: &log-rotation
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "2"
+
+services:
+  # ---------------------------------------------------------------------------
+  # Loki: single-binary deployment, filesystem object store, TSDB index.
+  # Sized for 1-2 OCPU / 4-6 GB ARM shapes (OCI Always Free: 4 OCPU, 24 GB).
+  # ---------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:3.2.1
+    container_name: cg-loki
+    restart: unless-stopped
+    command:
+      - -config.file=/etc/loki/loki-config.yml
+      - -config.expand-env=false
+    ports:
+      # Loopback only: Loki has no authentication in this stage. Fluent Bit and
+      # Grafana reach it over the compose network; humans reach it through
+      # `ssh -L 3100:localhost:3100`, never from the internet.
+      - "127.0.0.1:${LOKI_PORT:-3100}:3100"
+    volumes:
+      - ../configs/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    environment:
+      GOMAXPROCS: "1"
+    mem_limit: 512m
+    cpus: 0.75
+    security_opt:
+      - no-new-privileges:true
+    logging: *log-rotation
+    networks:
+      - logs
+
+  # ---------------------------------------------------------------------------
+  # Fluent Bit: tails Docker's JSON log files and ships them to Loki.
+  # Image is built from the repository root Dockerfile so the pipeline configs
+  # are immutable (no drift between hosts or clouds).
+  # ---------------------------------------------------------------------------
+  fluent-bit:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: cloudguard/fluent-bit-pipeline:local
+    container_name: cg-fluent-bit
+    restart: unless-stopped
+    depends_on:
+      - loki
+    ports:
+      - "127.0.0.1:${FLUENT_BIT_HTTP_PORT:-2020}:2020"
+    volumes:
+      # Read-only access to container log files. No Docker socket is mounted:
+      # the collector never needs control-plane access to the host.
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      # Persistent filesystem buffer so log delivery survives a Loki restart.
+      - fluent-bit-buffer:/fluent-bit/buffer
+    environment:
+      LOG_HOST_LABEL: ${LOG_HOST_LABEL:-docker-host}
+      LOG_CLUSTER_LABEL: ${LOG_CLUSTER_LABEL:-cloudguard-logs}
+    mem_limit: 256m
+    cpus: 0.5
+    security_opt:
+      - no-new-privileges:true
+    logging: *log-rotation
+    networks:
+      - logs
+
+  # ---------------------------------------------------------------------------
+  # Grafana: Loki is provisioned as the default datasource (see configs/).
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.3.1
+    container_name: cg-grafana
+    restart: unless-stopped
+    depends_on:
+      - loki
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      # Mount only the datasources subdirectory. Mounting all of provisioning/
+      # would hide the image's own dashboards/ and plugins/ folders and make
+      # Grafana log a provisioning error for each one on every start.
+      - ../configs/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me-before-exposing}
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    mem_limit: 384m
+    cpus: 0.5
+    security_opt:
+      - no-new-privileges:true
+    logging: *log-rotation
+    networks:
+      - logs
+
+networks:
+  logs:
+    driver: bridge
+
+volumes:
+  loki-data:
+  grafana-data:
+  fluent-bit-buffer:

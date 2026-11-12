@@ -1,0 +1,6 @@
+# Rendered user-data is compared byte-for-byte by the OCI provider, which marks
+# `metadata.user_data` as ForceNew. A CRLF checkout on Windows changes the
+# rendered payload and makes OpenTofu propose replacing a healthy instance, so
+# these files must stay LF on every platform.
+*.tftpl  text eol=lf
+*.sh     text eol=lf

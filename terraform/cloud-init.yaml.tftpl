@@ -1,0 +1,62 @@
+#cloud-config
+# Host bootstrap for the Centralized Log Aggregator.
+#
+# The `#cloud-config` marker above MUST stay on line 1. cloud-init inspects the
+# first bytes of instance user-data to choose a handler; with a comment (or a
+# blank line) before it, cloud-init logs
+#   "Unhandled non-multipart (text/x-not-multipart) userdata"
+# and silently skips every package and command below — the instance boots with
+# no Docker and reports `status: done`, which looks like success.
+#
+# NO SECRETS. The stack's .env is created by the operator after provisioning;
+# nothing credential-bearing is written into instance metadata or state.
+
+package_update: true
+package_upgrade: false
+
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - docker.io
+  - docker-compose-v2
+  - netfilter-persistent
+
+write_files:
+  # Docker's json-file logs are the input of the Fluent Bit pipeline. Cap them
+  # here as well as in compose so a missing bind mount cannot fill the disk.
+  - path: /etc/docker/daemon.json
+    owner: root:root
+    permissions: "0644"
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": { "max-size": "10m", "max-file": "2" },
+        "live-restore": true
+      }
+
+  - path: /opt/${project_name}/.keep
+    owner: root:root
+    permissions: "0644"
+    content: |
+      Reserved for the Centralized Log Aggregator stack (docker/docker-compose.yml).
+      Deploy with: docker compose -f docker/docker-compose.yml up -d --build
+
+runcmd:
+  - [ systemctl, enable, --now, docker ]
+
+  # OCI's Ubuntu images ship a restrictive netfilter ruleset; publish only the
+  # ports the security list already allows.
+  - [ sh, -c, "iptables -I INPUT 1 -p tcp --dport ${grafana_port} -j ACCEPT || true" ]
+  - [ sh, -c, "iptables -I INPUT 1 -p tcp --dport ${loki_port} -j ACCEPT || true" ]
+  - [ sh, -c, "netfilter-persistent save || true" ]
+
+  # Allow the default ubuntu user (and therefore `ssh ubuntu@<ip>`) to run compose.
+  - [ usermod, -aG, docker, ubuntu ]
+
+  # Fail loudly in the log if the runtime did not land, so a silent skip is
+  # visible in /var/log/cloud-init-output.log instead of at deploy time.
+  - [ sh, -c, "command -v docker || { echo 'FATAL: docker missing after cloud-init' >&2; exit 1; }" ]
+  - [ sh, -c, "touch /var/tmp/cloudguard-bootstrap-done" ]
+
+final_message: "cloudguard-log-aggregator bootstrap complete"
