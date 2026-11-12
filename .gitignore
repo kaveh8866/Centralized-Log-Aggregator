@@ -1,5 +1,5 @@
 # =============================================================================
-# Project 01 · Centralized Log Aggregator — zero-leak boundary
+# Centralized Log Aggregator — zero-leak boundary
 # Nothing that carries a credential, a local database or generated state may
 # ever be committed. Runtime data lives in Docker named volumes, not in the tree.
 # =============================================================================

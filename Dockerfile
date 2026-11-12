@@ -1,4 +1,4 @@
-# Project 01 · Centralized Log Aggregator — Fluent Bit collector image.
+# Centralized Log Aggregator — Fluent Bit collector image.
 #
 # The pipeline configs are baked into the image on purpose: the collector that
 # runs on OCI, AWS, GCP or a laptop is byte-identical, so log parsing and labels

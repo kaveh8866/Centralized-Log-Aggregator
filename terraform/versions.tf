@@ -1,4 +1,4 @@
-# Project 01 · Centralized Log Aggregator — OCI environment (Stage 2)
+# Centralized Log Aggregator — OCI environment (Stage 2)
 #
 # Terraform/OpenTofu root module. Creates the network and the compute instance
 # that runs the Stage 1 compose stack. Everything cloud-specific is confined to

@@ -1,4 +1,4 @@
-# Project 01 · Centralized Log Aggregator
+# Centralized Log Aggregator
 # Portable stack: Fluent Bit (collector) -> Loki (store) -> Grafana (query UI).
 # Validated against Compose Spec (no obsolete `version:` key).
 #

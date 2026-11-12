@@ -1,4 +1,4 @@
-# Project 01 · Centralized Log Aggregator
+# Centralized Log Aggregator
 
 ![Status](https://img.shields.io/badge/stage-7%20%C2%B7%20audited%20%26%20documented-2EA043)
 ![Certified on OCI](https://img.shields.io/badge/production%20verification-OCI%20trial%20credits-0066FF)
